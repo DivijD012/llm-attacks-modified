@@ -55,6 +55,8 @@ def get_embeddings(model, input_ids):
         return model.model.embed_tokens(input_ids)
     elif isinstance(model, GPTNeoXForCausalLM):
         return model.base_model.embed_in(input_ids).half()
+    elif isinstance(model, nn.DataParallel):
+        return model.model.embed_tokens(input_ids)
     else:
         raise ValueError(f"Unknown model type: {type(model)}")
 
