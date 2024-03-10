@@ -36,7 +36,7 @@ def get_embedding_layer(model):
     elif isinstance(model, GPTNeoXForCausalLM):
         return model.base_model.embed_in
     elif isinstance(model, nn.DataParallel):
-        return model.embed_tokens
+        return model.module.embed_tokens
     else:
         raise ValueError(f"Unknown model type: {type(model)}")
 
@@ -48,7 +48,7 @@ def get_embedding_matrix(model):
     elif isinstance(model, GPTNeoXForCausalLM):
         return model.base_model.embed_in.weight
     elif isinstance(model, nn.DataParallel):
-        return model.embed_tokens.weight
+        return model.module.embed_tokens.weight
     else:
         raise ValueError(f"Unknown model type: {type(model)}")
 
@@ -60,7 +60,7 @@ def get_embeddings(model, input_ids):
     elif isinstance(model, GPTNeoXForCausalLM):
         return model.base_model.embed_in(input_ids).half()
     elif isinstance(model, nn.DataParallel):
-        return model.embed_tokens(input_ids)
+        return model.module.embed_tokens(input_ids)
     else:
         raise ValueError(f"Unknown model type: {type(model)}")
 
