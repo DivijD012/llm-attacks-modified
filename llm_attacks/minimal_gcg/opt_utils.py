@@ -42,7 +42,7 @@ def token_gradients(model, input_ids, input_slice, target_slice, loss_slice):
     one_hot.scatter_(
         1, 
         input_ids[input_slice].unsqueeze(1),
-        torch.ones(one_hot.shape[0], 1, device=model.device, dtype=embed_weights.dtype)
+        torch.ones(one_hot.shape[0], 1, device=model.module.device, dtype=embed_weights.dtype)
     )
     one_hot.requires_grad_()
     input_embeds = (one_hot @ embed_weights).unsqueeze(0)
