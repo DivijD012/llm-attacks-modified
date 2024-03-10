@@ -36,7 +36,7 @@ def token_gradients(model, input_ids, input_slice, target_slice, loss_slice):
     one_hot = torch.zeros(
         input_ids[input_slice].shape[0],
         embed_weights.shape[0],
-        device=model.device,
+        device=model.module.device,
         dtype=embed_weights.dtype
     )
     one_hot.scatter_(
@@ -116,7 +116,7 @@ def get_logits(*, model, tokenizer, input_ids, control_slice, test_controls=None
     if isinstance(test_controls[0], str):
         max_len = control_slice.stop - control_slice.start
         test_ids = [
-            torch.tensor(tokenizer(control, add_special_tokens=False).input_ids[:max_len], device=model.device)
+            torch.tensor(tokenizer(control, add_special_tokens=False).input_ids[:max_len], device=model.module.device)
             for control in test_controls
         ]
         pad_tok = 0
@@ -134,9 +134,9 @@ def get_logits(*, model, tokenizer, input_ids, control_slice, test_controls=None
             f"got {test_ids.shape}"
         ))
 
-    locs = torch.arange(control_slice.start, control_slice.stop).repeat(test_ids.shape[0], 1).to(model.device)
+    locs = torch.arange(control_slice.start, control_slice.stop).repeat(test_ids.shape[0], 1).to(model.module.device)
     ids = torch.scatter(
-        input_ids.unsqueeze(0).repeat(test_ids.shape[0], 1).to(model.device),
+        input_ids.unsqueeze(0).repeat(test_ids.shape[0], 1).to(model.module.device),
         1,
         locs,
         test_ids
