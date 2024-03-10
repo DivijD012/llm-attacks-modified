@@ -191,9 +191,7 @@ def load_model_and_tokenizer(**kwargs):
             use_cache=False,
             **kwargs
         )
-    model = nn.DataParallel(model)
-    model = model.to(device)
-    model = model.eval()
+    model = nn.DataParallel(model, device_ids = [0,1]).to(device).eval()
     
     tokenizer_path = "meta-llama/Llama-2-7b-chat-hf"
     
