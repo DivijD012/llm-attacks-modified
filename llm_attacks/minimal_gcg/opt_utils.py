@@ -32,17 +32,18 @@ def token_gradients(model, input_ids, input_slice, target_slice, loss_slice):
         The gradients of each token in the input_slice with respect to the loss.
     """
 
+    device = 'cuda'
     embed_weights = get_embedding_matrix(model)
     one_hot = torch.zeros(
         input_ids[input_slice].shape[0],
         embed_weights.shape[0],
-        device=model.module.device,
         dtype=embed_weights.dtype
     )
+    one_hot = one_hot.to(device)
     one_hot.scatter_(
         1, 
         input_ids[input_slice].unsqueeze(1),
-        torch.ones(one_hot.shape[0], 1, device=model.module.device, dtype=embed_weights.dtype)
+        torch.ones(one_hot.shape[0], 1, device=device, dtype=embed_weights.dtype)
     )
     one_hot.requires_grad_()
     input_embeds = (one_hot @ embed_weights).unsqueeze(0)
@@ -69,24 +70,25 @@ def token_gradients(model, input_ids, input_slice, target_slice, loss_slice):
     return grad
 
 def sample_control(control_toks, grad, batch_size, topk=256, temp=1, not_allowed_tokens=None):
-
+    device = 'cuda'
+    print(grad)
     if not_allowed_tokens is not None:
-        grad[:, not_allowed_tokens.to(grad.device)] = np.infty
+        grad[:, not_allowed_tokens.to(device)] = np.infty
 
     top_indices = (-grad).topk(topk, dim=1).indices
-    control_toks = control_toks.to(grad.device)
+    control_toks = control_toks.to(device)
 
     original_control_toks = control_toks.repeat(batch_size, 1)
     new_token_pos = torch.arange(
         0, 
         len(control_toks), 
         len(control_toks) / batch_size,
-        device=grad.device
+        device=device
     ).type(torch.int64)
     new_token_val = torch.gather(
         top_indices[new_token_pos], 1, 
         torch.randint(0, topk, (batch_size, 1),
-        device=grad.device)
+        device=device)
     )
     new_control_toks = original_control_toks.scatter_(1, new_token_pos.unsqueeze(-1), new_token_val)
 
@@ -113,10 +115,11 @@ def get_filtered_cands(tokenizer, control_cand, filter_cand=True, curr_control=N
 
 def get_logits(*, model, tokenizer, input_ids, control_slice, test_controls=None, return_ids=False, batch_size=512):
     
+    device = 'cuda'
     if isinstance(test_controls[0], str):
         max_len = control_slice.stop - control_slice.start
         test_ids = [
-            torch.tensor(tokenizer(control, add_special_tokens=False).input_ids[:max_len], device=model.module.device)
+            torch.tensor(tokenizer(control, add_special_tokens=False).input_ids[:max_len], device=device)
             for control in test_controls
         ]
         pad_tok = 0
@@ -134,9 +137,9 @@ def get_logits(*, model, tokenizer, input_ids, control_slice, test_controls=None
             f"got {test_ids.shape}"
         ))
 
-    locs = torch.arange(control_slice.start, control_slice.stop).repeat(test_ids.shape[0], 1).to(model.module.device)
+    locs = torch.arange(control_slice.start, control_slice.stop).repeat(test_ids.shape[0], 1).to(device)
     ids = torch.scatter(
-        input_ids.unsqueeze(0).repeat(test_ids.shape[0], 1).to(model.module.device),
+        input_ids.unsqueeze(0).repeat(test_ids.shape[0], 1).to(device),
         1,
         locs,
         test_ids
@@ -191,7 +194,10 @@ def load_model_and_tokenizer(**kwargs):
             use_cache=False,
             **kwargs
         )
-    model = nn.DataParallel(model, device_ids = [0,1]).to(device).eval()
+    print(model)
+    model = nn.DataParallel(model)
+    model.to(device)
+    model.eval()
     
     tokenizer_path = "meta-llama/Llama-2-7b-chat-hf"
     
